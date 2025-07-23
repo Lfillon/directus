@@ -13,7 +13,7 @@ import { applyDiff } from '../utils/apply-diff.js';
 import { getSnapshotDiff } from '../utils/get-snapshot-diff.js';
 import { getSnapshot } from '../utils/get-snapshot.js';
 import { getVersionedHash } from '../utils/get-versioned-hash.js';
-import { validateApplyDiff } from '../utils/validate-diff.js';
+import { cleanApplyPatch, validateApplyDiff, validateApplyPatch} from '../utils/validate-diff.js';
 import { validateSnapshot } from '../utils/validate-snapshot.js';
 
 export class SchemaService {
@@ -42,6 +42,17 @@ export class SchemaService {
 		if (!validateApplyDiff(payload, snapshotWithHash)) return;
 
 		await applyDiff(currentSnapshot, payload.diff, { database: this.knex });
+	}
+
+	async applyPatch(payload: SnapshotDiff): Promise<void> {
+		if (this.accountability?.admin !== true) throw new ForbiddenError();
+
+		const currentSnapshot = await this.snapshot();
+
+		if (!validateApplyPatch(payload)) return;
+
+		const cleanPatch : SnapshotDiff = cleanApplyPatch(payload, currentSnapshot);
+		await applyDiff(currentSnapshot, cleanPatch, { database: this.knex });
 	}
 
 	async diffOrPatch(

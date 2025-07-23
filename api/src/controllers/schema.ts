@@ -7,7 +7,7 @@ import { load as loadYaml } from 'js-yaml';
 import { useLogger } from '../logger/index.js';
 import { respond } from '../middleware/respond.js';
 import { SchemaService } from '../services/schema.js';
-import type { Snapshot, SnapshotDiffWithHash } from '../types/index.js';
+import type { Snapshot, SnapshotDiff, SnapshotDiffWithHash } from '../types/index.js';
 import asyncHandler from '../utils/async-handler.js';
 import { getVersionedHash } from '../utils/get-versioned-hash.js';
 
@@ -139,6 +139,18 @@ router.post(
 		const service = new SchemaService({ accountability: req.accountability });
 		const diff: SnapshotDiffWithHash = res.locals['upload'];
 		await service.apply(diff);
+		return next();
+	}),
+	respond,
+);
+
+router.post(
+	'/apply-patch',
+	asyncHandler(schemaMultipartHandler),
+	asyncHandler(async (req, res, next) => {
+		const service = new SchemaService({ accountability: req.accountability });
+		const diff: SnapshotDiff = res.locals['upload'];
+		await service.applyPatch(diff);
 		return next();
 	}),
 	respond,

@@ -1,6 +1,6 @@
 import Joi from 'joi';
 import { InvalidPayloadError } from '@directus/errors';
-import type { SnapshotDiffWithHash, SnapshotWithHash } from '../types/snapshot.js';
+import type { SnapshotDiff, Snapshot, SnapshotDiffWithHash, SnapshotWithHash } from '../types/snapshot.js';
 import { DiffKind } from '../types/snapshot.js';
 
 const deepDiffSchema = Joi.object({
@@ -154,4 +154,105 @@ export function validateApplyDiff(applyDiff: SnapshotDiffWithHash, currentSnapsh
 	throw new InvalidPayloadError({
 		reason: `Provided hash does not match the current instance's schema hash, indicating the schema has changed after this diff was generated. Please generate a new diff and try again`,
 	});
+}
+
+/**
+ * Validates the patch against the current schema snapshot.
+ *
+ * @returns True if the patch can be applied (valid & not empty).
+ */
+export function validateApplyPatch(applyPatch: SnapshotDiff): boolean {
+	// No changes to apply
+	if (
+		applyPatch.collections.length === 0 &&
+		applyPatch.fields.length === 0 &&
+		applyPatch.relations.length === 0
+	) {
+		return false;
+	}
+
+	for (const diffCollection of applyPatch.collections) {
+		const collection = diffCollection.collection;
+
+		if (diffCollection.diff[0]?.kind === DiffKind.DELETE) {
+			throw new InvalidPayloadError({
+				reason: `Provided patch is trying to delete a collection : "${collection}" but it's not authorized in patch. Please generate a new patch and try again`,
+			});
+		}
+	}
+
+	for (const diffField of applyPatch.fields) {
+		const field = `${diffField.collection}.${diffField.field}`;
+
+		if (diffField.diff[0]?.kind === DiffKind.DELETE) {
+			throw new InvalidPayloadError({
+				reason: `Provided patch is trying to delete field "${field}" but it's not authorized in patch. Please generate a new patch and try again`,
+			});
+		}
+	}
+
+	for (const diffRelation of applyPatch.relations) {
+		let relation = `${diffRelation.collection}.${diffRelation.field}`;
+		if (diffRelation.related_collection) relation += `-> ${diffRelation.related_collection}`;
+
+		if (diffRelation.diff[0]?.kind === DiffKind.DELETE) {
+			throw new InvalidPayloadError({
+				reason: `Provided patch is trying to delete relation "${relation}" but it's not authorized in patch. Please generate a new patch and try again`,
+			});
+		}
+	}
+
+	return true;
+}
+
+/**
+ * Clean the patch against the current schema snapshot.
+ *
+ * Remove already exist element from the patch.
+ *
+ * @returns A clean patch.
+ */
+export function cleanApplyPatch(applyPatch: SnapshotDiff, currentSnapshot: Snapshot): SnapshotDiff {
+	applyPatch.collections = applyPatch.collections.filter((diffCollection): boolean => {
+		if (diffCollection.diff[0]?.kind === DiffKind.NEW) {
+			return undefined === currentSnapshot.collections.find(
+				(c) => c.collection === diffCollection.collection,
+			);
+		}
+		return false;
+	});
+
+
+	applyPatch.fields = applyPatch.fields.filter((diffField): boolean => {
+		if (diffField.diff[0]?.kind === DiffKind.NEW) {
+			return undefined === currentSnapshot.fields.find(
+				(f) => f.collection === diffField.collection && f.field === diffField.field,
+			);
+		}
+		return false;
+	});
+
+
+	applyPatch.relations = applyPatch.relations.filter((diffRelation): boolean => {
+		if (diffRelation.diff[0]?.kind === DiffKind.NEW) {
+			return undefined === currentSnapshot.relations.find(
+				(r) => r.collection === diffRelation.collection && r.field === diffRelation.field,
+			);
+		}
+		return false;
+	});
+
+
+	// No changes to apply
+	if (
+		applyPatch.collections.length === 0 &&
+		applyPatch.fields.length === 0 &&
+		applyPatch.relations.length === 0
+	) {
+		throw new InvalidPayloadError({
+			reason: `All elements are already created. Nothing to do`,
+		});
+	}
+
+	return applyPatch;
 }
