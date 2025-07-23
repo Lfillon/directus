@@ -44,7 +44,8 @@ export class SchemaService {
 		await applyDiff(currentSnapshot, payload.diff, { database: this.knex });
 	}
 
-	async diff(
+	async diffOrPatch(
+		doDiff: boolean,
 		snapshot: Snapshot,
 		options?: { currentSnapshot?: Snapshot; force?: boolean },
 	): Promise<SnapshotDiff | null> {
@@ -53,13 +54,30 @@ export class SchemaService {
 		validateSnapshot(snapshot, options?.force);
 
 		const currentSnapshot = options?.currentSnapshot ?? (await getSnapshot({ database: this.knex }));
-		const diff = getSnapshotDiff(currentSnapshot, snapshot);
+
+		let current = doDiff ? currentSnapshot : snapshot;
+		let after =  doDiff ? snapshot: currentSnapshot;
+		const diff = getSnapshotDiff(current, after);
 
 		if (diff.collections.length === 0 && diff.fields.length === 0 && diff.relations.length === 0) {
 			return null;
 		}
 
 		return diff;
+	}
+
+	async diff(
+		snapshot: Snapshot,
+		options?: { currentSnapshot?: Snapshot; force?: boolean },
+	): Promise<SnapshotDiff | null> {
+		return this.diffOrPatch(true, snapshot, options);
+	}
+
+	async patch(
+		snapshot: Snapshot,
+		options?: { currentSnapshot?: Snapshot; force?: boolean },
+	): Promise<SnapshotDiff | null> {
+		return this.diffOrPatch(false, snapshot, options);
 	}
 
 	getHashedSnapshot(snapshot: Snapshot): SnapshotWithHash {
