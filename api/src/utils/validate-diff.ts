@@ -208,7 +208,8 @@ export function validateApplyPatch(applyPatch: SnapshotDiff): boolean {
 /**
  * Clean the patch against the current schema snapshot.
  *
- * Remove already exist element from the patch.
+ * When ADD, remove already exist element from the patch.
+ * When EDIT, remove not exist element from the patch.
  *
  * @returns A clean patch.
  */
@@ -216,6 +217,10 @@ export function cleanApplyPatch(applyPatch: SnapshotDiff, currentSnapshot: Snaps
 	applyPatch.collections = applyPatch.collections.filter((diffCollection): boolean => {
 		if (diffCollection.diff[0]?.kind === DiffKind.NEW) {
 			return undefined === currentSnapshot.collections.find(
+				(c) => c.collection === diffCollection.collection,
+			);
+		} else if (diffCollection.diff[0]?.kind === DiffKind.EDIT) {
+			return undefined !== currentSnapshot.collections.find(
 				(c) => c.collection === diffCollection.collection,
 			);
 		}
@@ -228,6 +233,10 @@ export function cleanApplyPatch(applyPatch: SnapshotDiff, currentSnapshot: Snaps
 			return undefined === currentSnapshot.fields.find(
 				(f) => f.collection === diffField.collection && f.field === diffField.field,
 			);
+		} else if (diffField.diff[0]?.kind === DiffKind.EDIT) {
+			return undefined !== currentSnapshot.fields.find(
+				(f) => f.collection === diffField.collection && f.field === diffField.field,
+			);
 		}
 		return false;
 	});
@@ -236,6 +245,10 @@ export function cleanApplyPatch(applyPatch: SnapshotDiff, currentSnapshot: Snaps
 	applyPatch.relations = applyPatch.relations.filter((diffRelation): boolean => {
 		if (diffRelation.diff[0]?.kind === DiffKind.NEW) {
 			return undefined === currentSnapshot.relations.find(
+				(r) => r.collection === diffRelation.collection && r.field === diffRelation.field,
+			);
+		} else if (diffRelation.diff[0]?.kind === DiffKind.EDIT) {
+			return undefined !== currentSnapshot.relations.find(
 				(r) => r.collection === diffRelation.collection && r.field === diffRelation.field,
 			);
 		}
