@@ -177,7 +177,7 @@ export function validateApplyPatch(applyPatch: SnapshotDiff): boolean {
 
 		if (diffCollection.diff[0]?.kind === DiffKind.DELETE) {
 			throw new InvalidPayloadError({
-				reason: `Provided patch is trying to delete a collection : "${collection}" but it's not authorized in patch. Please generate a new patch and try again`,
+				reason: `Provided patch is trying to delete the collection "${collection}" but it's not authorized in patch. Please generate a new patch and try again`,
 			});
 		}
 	}
@@ -187,7 +187,7 @@ export function validateApplyPatch(applyPatch: SnapshotDiff): boolean {
 
 		if (diffField.diff[0]?.kind === DiffKind.DELETE) {
 			throw new InvalidPayloadError({
-				reason: `Provided patch is trying to delete field "${field}" but it's not authorized in patch. Please generate a new patch and try again`,
+				reason: `Provided patch is trying to delete the field "${field}" but it's not authorized in patch. Please generate a new patch and try again`,
 			});
 		}
 	}
@@ -198,7 +198,7 @@ export function validateApplyPatch(applyPatch: SnapshotDiff): boolean {
 
 		if (diffRelation.diff[0]?.kind === DiffKind.DELETE) {
 			throw new InvalidPayloadError({
-				reason: `Provided patch is trying to delete relation "${relation}" but it's not authorized in patch. Please generate a new patch and try again`,
+				reason: `Provided patch is trying to delete the relation "${relation}" but it's not authorized in patch. Please generate a new patch and try again`,
 			});
 		}
 	}
