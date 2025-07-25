@@ -1,5 +1,5 @@
-import { describe, expect, test } from 'vitest';
-import type { Collection } from '../types/collection.js';
+import {describe, expect, test} from 'vitest';
+import type {Collection} from '../types/collection.js';
 import type {
 	Snapshot,
 	SnapshotDiff,
@@ -8,7 +8,8 @@ import type {
 	SnapshotRelation,
 	SnapshotWithHash,
 } from '../types/snapshot.js';
-import { validateApplyDiff } from './validate-diff.js';
+import {cleanApplyPatch, validateApplyDiff, validateApplyPatch} from './validate-diff.js';
+import type {DiffEdit} from "deep-diff";
 
 test('should fail on invalid diff schema', () => {
 	const diff = {} as SnapshotDiffWithHash;
@@ -20,10 +21,10 @@ test('should fail on invalid diff schema', () => {
 test('should fail on invalid hash', () => {
 	const diff = {
 		hash: 'abc',
-		diff: { collections: [{ collection: 'test', diff: [] }], fields: [], relations: [] },
+		diff: {collections: [{collection: 'test', diff: []}], fields: [], relations: []},
 	} as SnapshotDiffWithHash;
 
-	const snapshot = { hash: 'xyz' } as SnapshotWithHash;
+	const snapshot = {hash: 'xyz'} as SnapshotWithHash;
 
 	expect(() => validateApplyDiff(diff, snapshot)).toThrowError(
 		"Provided hash does not match the current instance's schema hash",
@@ -55,10 +56,10 @@ describe('should throw accurate error', () => {
 
 	test('creating collection which already exists', () => {
 		const diff = baseDiff({
-			collections: [{ collection: 'test', diff: [{ kind: 'N', rhs: {} as Collection }] }],
+			collections: [{collection: 'test', diff: [{kind: 'N', rhs: {} as Collection}]}],
 		});
 
-		const snapshot = baseSnapshot({ collections: [{ collection: 'test' } as Collection] });
+		const snapshot = baseSnapshot({collections: [{collection: 'test'} as Collection]});
 
 		expect(() => validateApplyDiff(diff, snapshot)).toThrowError(
 			'Provided diff is trying to create collection "test" but it already exists',
@@ -67,7 +68,7 @@ describe('should throw accurate error', () => {
 
 	test('deleting collection which does not exist', () => {
 		const diff = baseDiff({
-			collections: [{ collection: 'test', diff: [{ kind: 'D', lhs: {} as Collection }] }],
+			collections: [{collection: 'test', diff: [{kind: 'D', lhs: {} as Collection}]}],
 		});
 
 		expect(() => validateApplyDiff(diff, baseSnapshot())).toThrowError(
@@ -77,10 +78,10 @@ describe('should throw accurate error', () => {
 
 	test('creating field which already exists', () => {
 		const diff = baseDiff({
-			fields: [{ collection: 'test', field: 'test', diff: [{ kind: 'N', rhs: {} as SnapshotField }] }],
+			fields: [{collection: 'test', field: 'test', diff: [{kind: 'N', rhs: {} as SnapshotField}]}],
 		});
 
-		const snapshot = baseSnapshot({ fields: [{ collection: 'test', field: 'test' } as SnapshotField] });
+		const snapshot = baseSnapshot({fields: [{collection: 'test', field: 'test'} as SnapshotField]});
 
 		expect(() => validateApplyDiff(diff, snapshot)).toThrowError(
 			'Provided diff is trying to create field "test.test" but it already exists',
@@ -89,7 +90,7 @@ describe('should throw accurate error', () => {
 
 	test('deleting field which does not exist', () => {
 		const diff = baseDiff({
-			fields: [{ collection: 'test', field: 'test', diff: [{ kind: 'D', lhs: {} as SnapshotField }] }],
+			fields: [{collection: 'test', field: 'test', diff: [{kind: 'D', lhs: {} as SnapshotField}]}],
 		});
 
 		expect(() => validateApplyDiff(diff, baseSnapshot())).toThrowError(
@@ -104,13 +105,13 @@ describe('should throw accurate error', () => {
 					collection: 'test',
 					field: 'test',
 					related_collection: 'relation',
-					diff: [{ kind: 'N', rhs: {} as SnapshotRelation }],
+					diff: [{kind: 'N', rhs: {} as SnapshotRelation}],
 				},
 			],
 		});
 
 		const snapshot = baseSnapshot({
-			relations: [{ collection: 'test', field: 'test', related_collection: 'relation' } as SnapshotRelation],
+			relations: [{collection: 'test', field: 'test', related_collection: 'relation'} as SnapshotRelation],
 		});
 
 		expect(() => validateApplyDiff(diff, snapshot)).toThrowError(
@@ -125,7 +126,7 @@ describe('should throw accurate error', () => {
 					collection: 'test',
 					field: 'test',
 					related_collection: 'relation',
-					diff: [{ kind: 'D', lhs: {} as SnapshotRelation }],
+					diff: [{kind: 'D', lhs: {} as SnapshotRelation}],
 				},
 			],
 		});
@@ -253,7 +254,7 @@ test('should not throw error for diffs with varying types of lhs/rhs', () => {
 		},
 	};
 
-	const snapshot = { hash: 'abc' } as SnapshotWithHash;
+	const snapshot = {hash: 'abc'} as SnapshotWithHash;
 
 	expect(() => validateApplyDiff(diff, snapshot)).not.toThrow();
 });
@@ -295,7 +296,7 @@ test('should not throw error for relation diff with null related_collection (app
 		},
 	};
 
-	const snapshot = { hash: 'abc' } as SnapshotWithHash;
+	const snapshot = {hash: 'abc'} as SnapshotWithHash;
 
 	expect(() => validateApplyDiff(diff, snapshot)).not.toThrow();
 });
@@ -303,7 +304,7 @@ test('should not throw error for relation diff with null related_collection (app
 test('should detect empty diff', () => {
 	const diff = {
 		hash: 'abc',
-		diff: { collections: [], fields: [], relations: [] },
+		diff: {collections: [], fields: [], relations: []},
 	};
 
 	const snapshot = {} as SnapshotWithHash;
@@ -314,10 +315,162 @@ test('should detect empty diff', () => {
 test('should pass on valid diff', () => {
 	const diff = {
 		hash: 'abc',
-		diff: { collections: [{ collection: 'test', diff: [] }], fields: [], relations: [] },
+		diff: {collections: [{collection: 'test', diff: []}], fields: [], relations: []},
 	};
 
-	const snapshot = { hash: 'abc' } as SnapshotWithHash;
+	const snapshot = {hash: 'abc'} as SnapshotWithHash;
 
 	expect(validateApplyDiff(diff, snapshot)).toBe(true);
+});
+
+
+test('should detect empty patch', () => {
+	const patch = {collections: [], fields: [], relations: []};
+
+	expect(validateApplyPatch(patch)).toBe(false);
+});
+
+test('should not accept deleting thing', () => {
+	const patch: SnapshotDiff = {
+		collections: [
+			{
+				collection: "test",
+				diff: [
+					{
+						kind: "D",
+						lhs: {
+							collection: "test",
+							meta: {
+								accountability: "all",
+							},
+							schema: {
+								name: "test"
+							}
+						}
+					}
+				]
+			}],
+		fields: [], relations: []
+	};
+
+	expect(() => validateApplyPatch(patch)).toThrowError(
+		'Invalid payload. Provided patch is trying to delete the collection "test" but it\'s not authorized in patch. Please generate a new patch and try again',
+	);
+});
+
+
+test('Cleaning patch, remove DiffAdd on already exists elements', () => {
+	const patch: SnapshotDiff = {
+		collections: [{
+			collection: "test",
+			diff: [
+				{
+					kind: "N",
+					rhs: {
+						collection: "test",
+						meta: null,
+						schema: null
+					}
+				}
+			]
+		}], fields: [], relations: []
+	};
+
+	const snapshot: Snapshot = {
+		version: 1,
+		directus: "11.9.2",
+		collections: [
+			{
+				collection: "test",
+				meta: null,
+				schema: null
+			}
+		],
+		fields: [],
+		relations: []
+	};
+
+	expect(() => cleanApplyPatch(patch, snapshot)).toThrowError(
+		"Invalid payload. All elements are already created. Nothing to do."
+	);
+});
+
+test('Cleaning patch, convert DiffAdd on already exists elements into DiffEdit', () => {
+	const patch: SnapshotDiff = {
+		collections: [{
+			collection: "test",
+			diff: [
+				{
+					kind: "N",
+					rhs: {
+						collection: "test",
+						meta: {
+							color: '#6644FF'
+						},
+						schema: null
+					}
+				}
+			]
+		}], fields: [], relations: []
+	};
+
+	const snapshot: Snapshot = {
+		version: 1,
+		directus: "11.9.2",
+		collections: [
+			{
+				collection: "test",
+				meta: null,
+				schema: null
+			}
+		],
+		fields: [],
+		relations: []
+	};
+
+	expect(cleanApplyPatch(patch, snapshot)).toEqual<SnapshotDiff>({
+		collections: [{
+			collection: "test",
+			diff: [
+				{
+					kind: "E",
+					lhs: null,
+					path: ['meta'],
+					rhs: {color: "#6644FF"}
+				}
+			]
+		}],
+		fields: [],
+		relations: []
+	});
+});
+
+test('Cleaning patch, remove DiffEdit on non existing elements', () => {
+	const patch: SnapshotDiff = {
+		collections: [{
+			collection: "test",
+			diff: [
+				{
+					kind: "E",
+					rhs: {
+						collection: "test",
+						meta: {
+							color: '#6644FF'
+						},
+						schema: null
+					}
+				}
+			]
+		}], fields: [], relations: []
+	};
+
+	const snapshot: Snapshot = {
+		version: 1,
+		directus: "11.9.2",
+		collections: [],
+		fields: [],
+		relations: []
+	};
+
+	expect(() => cleanApplyPatch(patch, snapshot)).toThrowError("Invalid payload. All elements are already created. Nothing to do.");
 });
