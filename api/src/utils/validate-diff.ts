@@ -2,6 +2,7 @@ import Joi from 'joi';
 import { InvalidPayloadError } from '@directus/errors';
 import type { SnapshotDiff, Snapshot, SnapshotDiffWithHash, SnapshotWithHash } from '../types/snapshot.js';
 import { DiffKind } from '../types/snapshot.js';
+import deepDiff from 'deep-diff';
 
 const deepDiffSchema = Joi.object({
 	kind: Joi.string()
@@ -208,12 +209,29 @@ export function validateApplyPatch(applyPatch: SnapshotDiff): boolean {
 /**
  * Clean the patch against the current schema snapshot.
  *
- * When ADD, remove already exist element from the patch.
- * When EDIT, remove not exist element from the patch.
+ * DiffNew on already exists elements are removed if there is no change with existing element.
+ * DiffNew on already exists elements are converted into DiffEdit if there are changes with existing element.
+ * DiffEdit on not existing element are removed from the patch.
  *
  * @returns A clean patch.
  */
 export function cleanApplyPatch(applyPatch: SnapshotDiff, currentSnapshot: Snapshot): SnapshotDiff {
+	// Convert DiffNew on already exists elements into DiffEdit
+	applyPatch.collections = applyPatch.collections.map((diffCollection) => {
+		if (diffCollection.diff[0]?.kind === DiffKind.NEW) {
+			const currentDiff = diffCollection.diff[0];
+			const exists = currentSnapshot.collections.find(
+				(c) => c.collection === diffCollection.collection,
+			);
+			if (exists) {
+				const changes = deepDiff.diff(exists, currentDiff.rhs);
+				return changes ? { collection : diffCollection.collection, diff: changes } : diffCollection;
+			}
+		}
+		return diffCollection;
+	});
+
+	// Remove DiffNew on already exists elements and DiffEdit on non existing elements
 	applyPatch.collections = applyPatch.collections.filter((diffCollection): boolean => {
 		if (diffCollection.diff[0]?.kind === DiffKind.NEW) {
 			return undefined === currentSnapshot.collections.find(
@@ -227,7 +245,22 @@ export function cleanApplyPatch(applyPatch: SnapshotDiff, currentSnapshot: Snaps
 		return false;
 	});
 
+	// Convert DiffNew on already exists elements into DiffEdit
+	applyPatch.fields = applyPatch.fields.map((diffField) => {
+		if (diffField.diff[0]?.kind === DiffKind.NEW) {
+			const currentDiff = diffField.diff[0];
+			const exists = currentSnapshot.fields.find(
+				(f) => f.collection === diffField.collection && f.field === diffField.field,
+			);
+			if (exists) {
+				const changes = deepDiff.diff(exists, currentDiff.rhs);
+				return changes ? { collection : diffField.collection, field: diffField.field, diff: changes } : diffField;
+			}
+		}
+		return diffField;
+	});
 
+	// Remove DiffNew on already exists elements and DiffEdit on non existing elements
 	applyPatch.fields = applyPatch.fields.filter((diffField): boolean => {
 		if (diffField.diff[0]?.kind === DiffKind.NEW) {
 			return undefined === currentSnapshot.fields.find(
@@ -241,7 +274,22 @@ export function cleanApplyPatch(applyPatch: SnapshotDiff, currentSnapshot: Snaps
 		return false;
 	});
 
+	// Convert DiffNew on already exists elements into DiffEdit
+	applyPatch.relations = applyPatch.relations.map((diffRelation) => {
+		if (diffRelation.diff[0]?.kind === DiffKind.NEW) {
+			const currentDiff = diffRelation.diff[0];
+			const exists = currentSnapshot.relations.find(
+				(r) => r.collection === diffRelation.collection && r.field === diffRelation.field,
+			);
+			if (exists) {
+				const changes = deepDiff.diff(exists, currentDiff.rhs);
+				return changes ? { collection : diffRelation.collection, field: diffRelation.field, related_collection : diffRelation.related_collection, diff: changes } : diffRelation;
+			}
+		}
+		return diffRelation;
+	});
 
+	// Remove DiffNew on already exists elements and DiffEdit on non existing elements
 	applyPatch.relations = applyPatch.relations.filter((diffRelation): boolean => {
 		if (diffRelation.diff[0]?.kind === DiffKind.NEW) {
 			return undefined === currentSnapshot.relations.find(
