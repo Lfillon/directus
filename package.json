@@ -1,0 +1,55 @@
+{
+	"name": "digital-guide-editor",
+	"description": "Please enter a description for your extension",
+	"icon": "extension",
+	"version": "1.0.0",
+	"keywords": [
+		"directus",
+		"directus-extension",
+		"directus-extension-bundle"
+	],
+	"type": "module",
+	"files": [
+		"dist"
+	],
+	"directus:extension": {
+		"type": "bundle",
+		"path": {
+			"app": "dist/app.js",
+			"api": "dist/api.js"
+		},
+		"entries": [
+			{
+				"type": "hook",
+				"name": "dge-hooks",
+				"source": "src/dge-hooks/index.ts"
+			},
+			{
+				"type": "endpoint",
+				"name": "dge-endpoints",
+				"source": "src/dge-endpoints/index.ts"
+			}
+		],
+		"host": "^10.10.0"
+	},
+	"scripts": {
+		"build": "directus-extension build",
+		"dev": "directus-extension build -w --no-minify --sourcemap",
+		"link": "directus-extension link",
+		"validate": "directus-extension validate",
+		"add": "directus-extension add"
+	},
+	"devDependencies": {
+		"@directus/extensions-sdk": "14.0.0",
+		"@types/node": "^24.1.0",
+		"@types/object-hash": "^3.0.6",
+		"typescript": "^5.8.3"
+	},
+	"dependencies": {
+		"@directus/errors": "^2.0.2",
+		"knex": "^3.1.0",
+		"object-hash": "^3.0.0",
+		"pg": "^8.16.3",
+		"ts-node": "^10.9.2"
+	}
+}
