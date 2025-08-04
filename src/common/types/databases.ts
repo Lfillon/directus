@@ -40,16 +40,16 @@ export enum DgeEditionContentStatus {
     PUBLISH='published',
 }
 
-export interface DgeTrackedTables {
-    id: number,
-    trackedTable: string,
-    type: string,
-    trackingEnabled: boolean
-}
-
-export enum DgeTablesTrackingTypes {
+export enum DgeTrackingTablesTypes {
     KERNEL = "kernel",
     TRANSLATIONS = "translation",
     PROPERTY = "property",
     EXTENSION = "extension"
+}
+
+export interface DgeTrackingTables {
+    id: number,
+    trackedTable: DgeTrackingTablesTypes,
+    type: string,
+    trackingEnabled: boolean
 }
