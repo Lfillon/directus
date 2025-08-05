@@ -54,19 +54,7 @@ export class SchemaService {
 		}
 	}
 
-	async applyPatch(payload: SnapshotDiff): Promise<void> {
-		if (this.accountability?.admin !== true) throw new ForbiddenError();
-
-		const currentSnapshot = await this.snapshot();
-
-		if (!validateApplyPatch(payload)) return;
-
-		const cleanPatch : SnapshotDiff = cleanApplyPatch(payload, currentSnapshot);
-		await applyDiff(currentSnapshot, cleanPatch, { database: this.knex });
-	}
-
-	async diffOrPatch(
-		doDiff: boolean,
+	async diff(
 		snapshot: Snapshot,
 		options?: { currentSnapshot?: Snapshot; force?: boolean, partial?: boolean },
 	): Promise<SnapshotDiff | null> {
@@ -85,20 +73,6 @@ export class SchemaService {
 		}
 
 		return diff;
-	}
-
-	async diff(
-		snapshot: Snapshot,
-		options?: { currentSnapshot?: Snapshot; force?: boolean },
-	): Promise<SnapshotDiff | null> {
-		return this.diffOrPatch(true, snapshot, options);
-	}
-
-	async patch(
-		snapshot: Snapshot,
-		options?: { currentSnapshot?: Snapshot; force?: boolean },
-	): Promise<SnapshotDiff | null> {
-		return this.diffOrPatch(false, snapshot, options);
 	}
 
 	getHashedSnapshot(snapshot: Snapshot): SnapshotWithHash {

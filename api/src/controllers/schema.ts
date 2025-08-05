@@ -7,7 +7,7 @@ import { load as loadYaml } from 'js-yaml';
 import { useLogger } from '../logger/index.js';
 import { respond } from '../middleware/respond.js';
 import { SchemaService } from '../services/schema.js';
-import type { Snapshot, SnapshotDiff, SnapshotDiffWithHash } from '../types/index.js';
+import type { Snapshot, SnapshotDiffWithHash } from '../types/index.js';
 import asyncHandler from '../utils/async-handler.js';
 import { getVersionedHash } from '../utils/get-versioned-hash.js';
 
@@ -117,40 +117,12 @@ router.post(
 );
 
 router.post(
-	'/patch',
-	asyncHandler(schemaMultipartHandler),
-	asyncHandler(async (req, res, next) => {
-		const service = new SchemaService({ accountability: req.accountability });
-		const snapshot: Snapshot = res.locals['upload'];
-		const currentSnapshot = await service.snapshot();
-		const snapshotPatch = await service.patch(snapshot, { currentSnapshot, force: 'force' in req.query });
-		if (!snapshotPatch) return next();
-
-		res.locals['payload'] = { data: snapshotPatch };
-		return next();
-	}),
-	respond,
-);
-
-router.post(
 	'/apply',
 	asyncHandler(schemaMultipartHandler),
 	asyncHandler(async (req, res, next) => {
 		const service = new SchemaService({ accountability: req.accountability });
 		const diff: SnapshotDiffWithHash = res.locals['upload'];
 		await service.apply(diff, { partial: 'partial' in req.query });
-		return next();
-	}),
-	respond,
-);
-
-router.post(
-	'/apply-patch',
-	asyncHandler(schemaMultipartHandler),
-	asyncHandler(async (req, res, next) => {
-		const service = new SchemaService({ accountability: req.accountability });
-		const diff: SnapshotDiff = res.locals['upload'];
-		await service.applyPatch(diff);
 		return next();
 	}),
 	respond,
