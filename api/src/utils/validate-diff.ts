@@ -162,7 +162,7 @@ export function validateApplyDiff(applyDiff: SnapshotDiffWithHash, currentSnapsh
  *
  * @returns True if the patch can be applied (valid & not empty).
  */
-export function validateApplyPatch(applyPatch: SnapshotDiffWithHash, currentSnapshotWithHash: SnapshotWithHash): boolean {
+export function validateApplyPartialDiff(applyPatch: SnapshotDiffWithHash, currentSnapshotWithHash: SnapshotWithHash): boolean {
 	// Diff can be applied due to matching hash
 	if (applyPatch.hash === currentSnapshotWithHash.hash) return true;
 
@@ -218,7 +218,7 @@ export function validateApplyPatch(applyPatch: SnapshotDiffWithHash, currentSnap
  *
  * @returns A clean patch.
  */
-export function cleanApplyPatch(applyPatch: SnapshotDiffWithHash, currentSnapshot: Snapshot): SnapshotDiffWithHash {
+export function cleanApplyPartialDiff(applyPatch: SnapshotDiffWithHash, currentSnapshot: Snapshot): SnapshotDiffWithHash {
 	// Convert DiffNew on already exists elements into DiffEdit
 	applyPatch.diff.collections = applyPatch.diff.collections.map((diffCollection) => {
 		if (diffCollection.diff[0]?.kind === DiffKind.NEW) {

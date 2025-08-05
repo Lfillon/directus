@@ -8,7 +8,7 @@ import type {
 	SnapshotRelation,
 	SnapshotWithHash,
 } from '../types/snapshot.js';
-import {cleanApplyPatch, validateApplyDiff, validateApplyPatch} from './validate-diff.js';
+import {cleanApplyPartialDiff, validateApplyDiff, validateApplyPartialDiff} from './validate-diff.js';
 import type {DiffEdit} from "deep-diff";
 
 test('should fail on invalid diff schema', () => {
@@ -327,7 +327,7 @@ test('should pass on valid diff', () => {
 test('should detect empty patch', () => {
 	const patch = {collections: [], fields: [], relations: []};
 
-	expect(validateApplyPatch(patch)).toBe(false);
+	expect(validateApplyPartialDiff(patch)).toBe(false);
 });
 
 test('should not accept deleting thing', () => {
@@ -353,7 +353,7 @@ test('should not accept deleting thing', () => {
 		fields: [], relations: []
 	};
 
-	expect(() => validateApplyPatch(patch)).toThrowError(
+	expect(() => validateApplyPartialDiff(patch)).toThrowError(
 		'Invalid payload. Provided patch is trying to delete the collection "test" but it\'s not authorized in patch. Please generate a new patch and try again',
 	);
 });
@@ -390,7 +390,7 @@ test('Cleaning patch, remove DiffAdd on already exists elements', () => {
 		relations: []
 	};
 
-	expect(() => cleanApplyPatch(patch, snapshot)).toThrowError(
+	expect(() => cleanApplyPartialDiff(patch, snapshot)).toThrowError(
 		"Invalid payload. All elements are already created. Nothing to do."
 	);
 });
@@ -428,7 +428,7 @@ test('Cleaning patch, convert DiffAdd on already exists elements into DiffEdit',
 		relations: []
 	};
 
-	expect(cleanApplyPatch(patch, snapshot)).toEqual<SnapshotDiff>({
+	expect(cleanApplyPartialDiff(patch, snapshot)).toEqual<SnapshotDiff>({
 		collections: [{
 			collection: "test",
 			diff: [
@@ -472,5 +472,5 @@ test('Cleaning patch, remove DiffEdit on non existing elements', () => {
 		relations: []
 	};
 
-	expect(() => cleanApplyPatch(patch, snapshot)).toThrowError("Invalid payload. All elements are already created. Nothing to do.");
+	expect(() => cleanApplyPartialDiff(patch, snapshot)).toThrowError("Invalid payload. All elements are already created. Nothing to do.");
 });

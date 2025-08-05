@@ -13,7 +13,7 @@ import { applyDiff } from '../utils/apply-diff.js';
 import { getSnapshotDiff } from '../utils/get-snapshot-diff.js';
 import { getSnapshot } from '../utils/get-snapshot.js';
 import { getVersionedHash } from '../utils/get-versioned-hash.js';
-import { cleanApplyPatch, validateApplyDiff, validateApplyPatch} from '../utils/validate-diff.js';
+import { cleanApplyPartialDiff, validateApplyDiff, validateApplyPartialDiff} from '../utils/validate-diff.js';
 import { validateSnapshot } from '../utils/validate-snapshot.js';
 
 export class SchemaService {
@@ -42,9 +42,9 @@ export class SchemaService {
 		const snapshotWithHash = this.getHashedSnapshot(currentSnapshot);
 
 		if (options?.partial) {
-			if (!validateApplyPatch(payload, snapshotWithHash)) return;
+			if (!validateApplyPartialDiff(payload, snapshotWithHash)) return;
 
-			const cleanPatch : SnapshotDiffWithHash = cleanApplyPatch(payload, currentSnapshot);
+			const cleanPatch : SnapshotDiffWithHash = cleanApplyPartialDiff(payload, currentSnapshot);
 			await applyDiff(currentSnapshot, cleanPatch.diff, { database: this.knex });
 
 		} else {
