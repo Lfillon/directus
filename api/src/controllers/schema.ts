@@ -106,7 +106,7 @@ router.post(
 		const service = new SchemaService({ accountability: req.accountability });
 		const snapshot: Snapshot = res.locals['upload'];
 		const currentSnapshot = await service.snapshot();
-		const snapshotDiff = await service.diff(snapshot, { currentSnapshot, force: 'force' in req.query });
+		const snapshotDiff = await service.diff(snapshot, { currentSnapshot, force: 'force' in req.query, partial: 'partial' in req.query });
 		if (!snapshotDiff) return next();
 
 		const currentSnapshotHash = getVersionedHash(currentSnapshot);
@@ -138,7 +138,7 @@ router.post(
 	asyncHandler(async (req, res, next) => {
 		const service = new SchemaService({ accountability: req.accountability });
 		const diff: SnapshotDiffWithHash = res.locals['upload'];
-		await service.apply(diff);
+		await service.apply(diff, { partial: 'partial' in req.query });
 		return next();
 	}),
 	respond,

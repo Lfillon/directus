@@ -33,15 +33,25 @@ export class SchemaService {
 		return currentSnapshot;
 	}
 
-	async apply(payload: SnapshotDiffWithHash): Promise<void> {
+	async apply(payload: SnapshotDiffWithHash,
+				options?: { currentSnapshot?: Snapshot; force?: boolean, partial?: boolean }
+	): Promise<void> {
 		if (this.accountability?.admin !== true) throw new ForbiddenError();
 
 		const currentSnapshot = await this.snapshot();
 		const snapshotWithHash = this.getHashedSnapshot(currentSnapshot);
 
-		if (!validateApplyDiff(payload, snapshotWithHash)) return;
+		if (options?.partial) {
+			if (!validateApplyPatch(payload, snapshotWithHash)) return;
 
-		await applyDiff(currentSnapshot, payload.diff, { database: this.knex });
+			const cleanPatch : SnapshotDiffWithHash = cleanApplyPatch(payload, currentSnapshot);
+			await applyDiff(currentSnapshot, cleanPatch.diff, { database: this.knex });
+
+		} else {
+			if (!validateApplyDiff(payload, snapshotWithHash)) return;
+
+			await applyDiff(currentSnapshot, payload.diff, { database: this.knex });
+		}
 	}
 
 	async applyPatch(payload: SnapshotDiff): Promise<void> {
@@ -58,7 +68,7 @@ export class SchemaService {
 	async diffOrPatch(
 		doDiff: boolean,
 		snapshot: Snapshot,
-		options?: { currentSnapshot?: Snapshot; force?: boolean },
+		options?: { currentSnapshot?: Snapshot; force?: boolean, partial?: boolean },
 	): Promise<SnapshotDiff | null> {
 		if (this.accountability?.admin !== true) throw new ForbiddenError();
 
@@ -66,8 +76,8 @@ export class SchemaService {
 
 		const currentSnapshot = options?.currentSnapshot ?? (await getSnapshot({ database: this.knex }));
 
-		let current = doDiff ? currentSnapshot : snapshot;
-		let after =  doDiff ? snapshot: currentSnapshot;
+		let current = options?.partial ? currentSnapshot : snapshot;
+		let after =  options?.partial ? snapshot : currentSnapshot;
 		const diff = getSnapshotDiff(current, after);
 
 		if (diff.collections.length === 0 && diff.fields.length === 0 && diff.relations.length === 0) {
