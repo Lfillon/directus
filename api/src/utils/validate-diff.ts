@@ -1,6 +1,6 @@
 import Joi from 'joi';
 import { InvalidPayloadError } from '@directus/errors';
-import type { SnapshotDiff, Snapshot, SnapshotDiffWithHash, SnapshotWithHash } from '../types/snapshot.js';
+import type { Snapshot, SnapshotDiffWithHash, SnapshotWithHash } from '../types/snapshot.js';
 import { DiffKind } from '../types/snapshot.js';
 import deepDiff from 'deep-diff';
 
@@ -162,17 +162,20 @@ export function validateApplyDiff(applyDiff: SnapshotDiffWithHash, currentSnapsh
  *
  * @returns True if the patch can be applied (valid & not empty).
  */
-export function validateApplyPatch(applyPatch: SnapshotDiff): boolean {
+export function validateApplyPatch(applyPatch: SnapshotDiffWithHash, currentSnapshotWithHash: SnapshotWithHash): boolean {
+	// Diff can be applied due to matching hash
+	if (applyPatch.hash === currentSnapshotWithHash.hash) return true;
+
 	// No changes to apply
 	if (
-		applyPatch.collections.length === 0 &&
-		applyPatch.fields.length === 0 &&
-		applyPatch.relations.length === 0
+		applyPatch.diff.collections.length === 0 &&
+		applyPatch.diff.fields.length === 0 &&
+		applyPatch.diff.relations.length === 0
 	) {
 		return false;
 	}
 
-	for (const diffCollection of applyPatch.collections) {
+	for (const diffCollection of applyPatch.diff.collections) {
 		const collection = diffCollection.collection;
 
 		if (diffCollection.diff[0]?.kind === DiffKind.DELETE) {
@@ -182,7 +185,7 @@ export function validateApplyPatch(applyPatch: SnapshotDiff): boolean {
 		}
 	}
 
-	for (const diffField of applyPatch.fields) {
+	for (const diffField of applyPatch.diff.fields) {
 		const field = `${diffField.collection}.${diffField.field}`;
 
 		if (diffField.diff[0]?.kind === DiffKind.DELETE) {
@@ -192,7 +195,7 @@ export function validateApplyPatch(applyPatch: SnapshotDiff): boolean {
 		}
 	}
 
-	for (const diffRelation of applyPatch.relations) {
+	for (const diffRelation of applyPatch.diff.relations) {
 		let relation = `${diffRelation.collection}.${diffRelation.field}`;
 		if (diffRelation.related_collection) relation += `-> ${diffRelation.related_collection}`;
 
@@ -215,9 +218,9 @@ export function validateApplyPatch(applyPatch: SnapshotDiff): boolean {
  *
  * @returns A clean patch.
  */
-export function cleanApplyPatch(applyPatch: SnapshotDiff, currentSnapshot: Snapshot): SnapshotDiff {
+export function cleanApplyPatch(applyPatch: SnapshotDiffWithHash, currentSnapshot: Snapshot): SnapshotDiffWithHash {
 	// Convert DiffNew on already exists elements into DiffEdit
-	applyPatch.collections = applyPatch.collections.map((diffCollection) => {
+	applyPatch.diff.collections = applyPatch.diff.collections.map((diffCollection) => {
 		if (diffCollection.diff[0]?.kind === DiffKind.NEW) {
 			const currentDiff = diffCollection.diff[0];
 			const exists = currentSnapshot.collections.find(
@@ -232,7 +235,7 @@ export function cleanApplyPatch(applyPatch: SnapshotDiff, currentSnapshot: Snaps
 	});
 
 	// Remove DiffNew on already exists elements and DiffEdit on non existing elements
-	applyPatch.collections = applyPatch.collections.filter((diffCollection): boolean => {
+	applyPatch.diff.collections = applyPatch.diff.collections.filter((diffCollection): boolean => {
 		if (diffCollection.diff[0]?.kind === DiffKind.NEW) {
 			return undefined === currentSnapshot.collections.find(
 				(c) => c.collection === diffCollection.collection,
@@ -246,7 +249,7 @@ export function cleanApplyPatch(applyPatch: SnapshotDiff, currentSnapshot: Snaps
 	});
 
 	// Convert DiffNew on already exists elements into DiffEdit
-	applyPatch.fields = applyPatch.fields.map((diffField) => {
+	applyPatch.diff.fields = applyPatch.diff.fields.map((diffField) => {
 		if (diffField.diff[0]?.kind === DiffKind.NEW) {
 			const currentDiff = diffField.diff[0];
 			const exists = currentSnapshot.fields.find(
@@ -261,7 +264,7 @@ export function cleanApplyPatch(applyPatch: SnapshotDiff, currentSnapshot: Snaps
 	});
 
 	// Remove DiffNew on already exists elements and DiffEdit on non existing elements
-	applyPatch.fields = applyPatch.fields.filter((diffField): boolean => {
+	applyPatch.diff.fields = applyPatch.diff.fields.filter((diffField): boolean => {
 		if (diffField.diff[0]?.kind === DiffKind.NEW) {
 			return undefined === currentSnapshot.fields.find(
 				(f) => f.collection === diffField.collection && f.field === diffField.field,
@@ -275,7 +278,7 @@ export function cleanApplyPatch(applyPatch: SnapshotDiff, currentSnapshot: Snaps
 	});
 
 	// Convert DiffNew on already exists elements into DiffEdit
-	applyPatch.relations = applyPatch.relations.map((diffRelation) => {
+	applyPatch.diff.relations = applyPatch.diff.relations.map((diffRelation) => {
 		if (diffRelation.diff[0]?.kind === DiffKind.NEW) {
 			const currentDiff = diffRelation.diff[0];
 			const exists = currentSnapshot.relations.find(
@@ -290,7 +293,7 @@ export function cleanApplyPatch(applyPatch: SnapshotDiff, currentSnapshot: Snaps
 	});
 
 	// Remove DiffNew on already exists elements and DiffEdit on non existing elements
-	applyPatch.relations = applyPatch.relations.filter((diffRelation): boolean => {
+	applyPatch.diff.relations = applyPatch.diff.relations.filter((diffRelation): boolean => {
 		if (diffRelation.diff[0]?.kind === DiffKind.NEW) {
 			return undefined === currentSnapshot.relations.find(
 				(r) => r.collection === diffRelation.collection && r.field === diffRelation.field,
@@ -306,9 +309,9 @@ export function cleanApplyPatch(applyPatch: SnapshotDiff, currentSnapshot: Snaps
 
 	// No changes to apply
 	if (
-		applyPatch.collections.length === 0 &&
-		applyPatch.fields.length === 0 &&
-		applyPatch.relations.length === 0
+		applyPatch.diff.collections.length === 0 &&
+		applyPatch.diff.fields.length === 0 &&
+		applyPatch.diff.relations.length === 0
 	) {
 		throw new InvalidPayloadError({
 			reason: `All elements are already created. Nothing to do`,
