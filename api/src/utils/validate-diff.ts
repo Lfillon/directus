@@ -162,9 +162,9 @@ export function validateApplyDiff(applyDiff: SnapshotDiffWithHash, currentSnapsh
  *
  * @returns True if the partialDiff can be applied (valid & not empty).
  */
-	// Diff can be applied due to matching hash
-	if (applyPatch.hash === currentSnapshotWithHash.hash) return true;
 export function validateApplyPartialDiff(applyPartialDiff: SnapshotDiffWithHash, currentSnapshotWithHash: SnapshotWithHash): boolean {
+	// Diff can't be applied due to unmatching hash
+	if (applyPartialDiff.hash !== currentSnapshotWithHash.hash) return false;
 
 	// No changes to apply
 	if (
