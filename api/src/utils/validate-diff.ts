@@ -158,50 +158,50 @@ export function validateApplyDiff(applyDiff: SnapshotDiffWithHash, currentSnapsh
 }
 
 /**
- * Validates the patch against the current schema snapshot.
+ * Validates the partialDiff against the current schema snapshot.
  *
- * @returns True if the patch can be applied (valid & not empty).
+ * @returns True if the partialDiff can be applied (valid & not empty).
  */
-export function validateApplyPartialDiff(applyPatch: SnapshotDiffWithHash, currentSnapshotWithHash: SnapshotWithHash): boolean {
 	// Diff can be applied due to matching hash
 	if (applyPatch.hash === currentSnapshotWithHash.hash) return true;
+export function validateApplyPartialDiff(applyPartialDiff: SnapshotDiffWithHash, currentSnapshotWithHash: SnapshotWithHash): boolean {
 
 	// No changes to apply
 	if (
-		applyPatch.diff.collections.length === 0 &&
-		applyPatch.diff.fields.length === 0 &&
-		applyPatch.diff.relations.length === 0
+		applyPartialDiff.diff.collections.length === 0 &&
+		applyPartialDiff.diff.fields.length === 0 &&
+		applyPartialDiff.diff.relations.length === 0
 	) {
 		return false;
 	}
 
-	for (const diffCollection of applyPatch.diff.collections) {
+	for (const diffCollection of applyPartialDiff.diff.collections) {
 		const collection = diffCollection.collection;
 
 		if (diffCollection.diff[0]?.kind === DiffKind.DELETE) {
 			throw new InvalidPayloadError({
-				reason: `Provided patch is trying to delete the collection "${collection}" but it's not authorized in patch. Please generate a new patch and try again`,
+				reason: `Provided partialDiff is trying to delete the collection "${collection}" but it's not authorized in partialDiff. Please generate a new partialDiff and try again`,
 			});
 		}
 	}
 
-	for (const diffField of applyPatch.diff.fields) {
+	for (const diffField of applyPartialDiff.diff.fields) {
 		const field = `${diffField.collection}.${diffField.field}`;
 
 		if (diffField.diff[0]?.kind === DiffKind.DELETE) {
 			throw new InvalidPayloadError({
-				reason: `Provided patch is trying to delete the field "${field}" but it's not authorized in patch. Please generate a new patch and try again`,
+				reason: `Provided partialDiff is trying to delete the field "${field}" but it's not authorized in partialDiff. Please generate a new partialDiff and try again`,
 			});
 		}
 	}
 
-	for (const diffRelation of applyPatch.diff.relations) {
+	for (const diffRelation of applyPartialDiff.diff.relations) {
 		let relation = `${diffRelation.collection}.${diffRelation.field}`;
 		if (diffRelation.related_collection) relation += `-> ${diffRelation.related_collection}`;
 
 		if (diffRelation.diff[0]?.kind === DiffKind.DELETE) {
 			throw new InvalidPayloadError({
-				reason: `Provided patch is trying to delete the relation "${relation}" but it's not authorized in patch. Please generate a new patch and try again`,
+				reason: `Provided partialDiff is trying to delete the relation "${relation}" but it's not authorized in partialDiff. Please generate a new partialDiff and try again`,
 			});
 		}
 	}
@@ -210,17 +210,17 @@ export function validateApplyPartialDiff(applyPatch: SnapshotDiffWithHash, curre
 }
 
 /**
- * Clean the patch against the current schema snapshot.
+ * Clean the partialDiff against the current schema snapshot.
  *
  * DiffNew on already exists elements are removed if there is no change with existing element.
  * DiffNew on already exists elements are converted into DiffEdit if there are changes with existing element.
- * DiffEdit on not existing element are removed from the patch.
+ * DiffEdit on not existing element are removed from the partialDiff.
  *
- * @returns A clean patch.
+ * @returns A clean partialDiff.
  */
-export function cleanApplyPartialDiff(applyPatch: SnapshotDiffWithHash, currentSnapshot: Snapshot): SnapshotDiffWithHash {
+export function cleanApplyPartialDiff(applyPartialDiff: SnapshotDiffWithHash, currentSnapshot: Snapshot): SnapshotDiffWithHash {
 	// Convert DiffNew on already exists elements into DiffEdit
-	applyPatch.diff.collections = applyPatch.diff.collections.map((diffCollection) => {
+	applyPartialDiff.diff.collections = applyPartialDiff.diff.collections.map((diffCollection) => {
 		if (diffCollection.diff[0]?.kind === DiffKind.NEW) {
 			const currentDiff = diffCollection.diff[0];
 			const exists = currentSnapshot.collections.find(
@@ -235,7 +235,7 @@ export function cleanApplyPartialDiff(applyPatch: SnapshotDiffWithHash, currentS
 	});
 
 	// Remove DiffNew on already exists elements and DiffEdit on non existing elements
-	applyPatch.diff.collections = applyPatch.diff.collections.filter((diffCollection): boolean => {
+	applyPartialDiff.diff.collections = applyPartialDiff.diff.collections.filter((diffCollection): boolean => {
 		if (diffCollection.diff[0]?.kind === DiffKind.NEW) {
 			return undefined === currentSnapshot.collections.find(
 				(c) => c.collection === diffCollection.collection,
@@ -249,7 +249,7 @@ export function cleanApplyPartialDiff(applyPatch: SnapshotDiffWithHash, currentS
 	});
 
 	// Convert DiffNew on already exists elements into DiffEdit
-	applyPatch.diff.fields = applyPatch.diff.fields.map((diffField) => {
+	applyPartialDiff.diff.fields = applyPartialDiff.diff.fields.map((diffField) => {
 		if (diffField.diff[0]?.kind === DiffKind.NEW) {
 			const currentDiff = diffField.diff[0];
 			const exists = currentSnapshot.fields.find(
@@ -264,7 +264,7 @@ export function cleanApplyPartialDiff(applyPatch: SnapshotDiffWithHash, currentS
 	});
 
 	// Remove DiffNew on already exists elements and DiffEdit on non existing elements
-	applyPatch.diff.fields = applyPatch.diff.fields.filter((diffField): boolean => {
+	applyPartialDiff.diff.fields = applyPartialDiff.diff.fields.filter((diffField): boolean => {
 		if (diffField.diff[0]?.kind === DiffKind.NEW) {
 			return undefined === currentSnapshot.fields.find(
 				(f) => f.collection === diffField.collection && f.field === diffField.field,
@@ -278,7 +278,7 @@ export function cleanApplyPartialDiff(applyPatch: SnapshotDiffWithHash, currentS
 	});
 
 	// Convert DiffNew on already exists elements into DiffEdit
-	applyPatch.diff.relations = applyPatch.diff.relations.map((diffRelation) => {
+	applyPartialDiff.diff.relations = applyPartialDiff.diff.relations.map((diffRelation) => {
 		if (diffRelation.diff[0]?.kind === DiffKind.NEW) {
 			const currentDiff = diffRelation.diff[0];
 			const exists = currentSnapshot.relations.find(
@@ -293,7 +293,7 @@ export function cleanApplyPartialDiff(applyPatch: SnapshotDiffWithHash, currentS
 	});
 
 	// Remove DiffNew on already exists elements and DiffEdit on non existing elements
-	applyPatch.diff.relations = applyPatch.diff.relations.filter((diffRelation): boolean => {
+	applyPartialDiff.diff.relations = applyPartialDiff.diff.relations.filter((diffRelation): boolean => {
 		if (diffRelation.diff[0]?.kind === DiffKind.NEW) {
 			return undefined === currentSnapshot.relations.find(
 				(r) => r.collection === diffRelation.collection && r.field === diffRelation.field,
@@ -309,14 +309,14 @@ export function cleanApplyPartialDiff(applyPatch: SnapshotDiffWithHash, currentS
 
 	// No changes to apply
 	if (
-		applyPatch.diff.collections.length === 0 &&
-		applyPatch.diff.fields.length === 0 &&
-		applyPatch.diff.relations.length === 0
+		applyPartialDiff.diff.collections.length === 0 &&
+		applyPartialDiff.diff.fields.length === 0 &&
+		applyPartialDiff.diff.relations.length === 0
 	) {
 		throw new InvalidPayloadError({
 			reason: `All elements are already created. Nothing to do`,
 		});
 	}
 
-	return applyPatch;
+	return applyPartialDiff;
 }
