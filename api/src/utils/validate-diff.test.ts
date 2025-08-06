@@ -9,7 +9,6 @@ import type {
 	SnapshotWithHash,
 } from '../types/snapshot.js';
 import {cleanApplyPartialDiff, validateApplyDiff, validateApplyPartialDiff} from './validate-diff.js';
-import type {DiffEdit} from "deep-diff";
 
 test('should fail on invalid diff schema', () => {
 	const diff = {} as SnapshotDiffWithHash;
@@ -324,16 +323,19 @@ test('should pass on valid diff', () => {
 });
 
 
-test('should detect empty patch', () => {
-	const patch = {collections: [], fields: [], relations: []};
+test('should detect empty partialDiff', () => {
+	const partialDiff = {hash: "abc", diff: {collections: [], fields: [], relations: []}};
 
-	expect(validateApplyPartialDiff(patch)).toBe(false);
+	const snapshot = {hash: 'abc'} as SnapshotWithHash;
+
+	expect(validateApplyPartialDiff(partialDiff, snapshot)).toBe(false);
 });
 
 test('should not accept deleting thing', () => {
-	const patch: SnapshotDiff = {
-		collections: [
-			{
+	const partialDiff: SnapshotDiffWithHash = {
+		hash: 'abc',
+		diff: {
+			collections: [{
 				collection: "test",
 				diff: [
 					{
@@ -350,30 +352,39 @@ test('should not accept deleting thing', () => {
 					}
 				]
 			}],
-		fields: [], relations: []
+			fields: [],
+			relations: []
+		}
 	};
 
-	expect(() => validateApplyPartialDiff(patch)).toThrowError(
-		'Invalid payload. Provided patch is trying to delete the collection "test" but it\'s not authorized in patch. Please generate a new patch and try again',
+	const snapshot = {hash: 'abc'} as SnapshotWithHash;
+
+	expect(() => validateApplyPartialDiff(partialDiff, snapshot)).toThrowError(
+		'Invalid payload. Provided partialDiff is trying to delete the collection "test" but it\'s not authorized in partialDiff. Please generate a new partialDiff and try again',
 	);
 });
 
 
-test('Cleaning patch, remove DiffAdd on already exists elements', () => {
-	const patch: SnapshotDiff = {
-		collections: [{
-			collection: "test",
-			diff: [
-				{
-					kind: "N",
-					rhs: {
-						collection: "test",
-						meta: null,
-						schema: null
+test('Cleaning partialDiff, remove DiffAdd on already exists elements', () => {
+	const partialDiff: SnapshotDiffWithHash = {
+		hash: 'abc',
+		diff: {
+			collections: [{
+				collection: "test",
+				diff: [
+					{
+						kind: "N",
+						rhs: {
+							collection: "test",
+							meta: null,
+							schema: null
+						}
 					}
-				}
-			]
-		}], fields: [], relations: []
+				]
+			}],
+			fields: [],
+			relations: []
+		}
 	};
 
 	const snapshot: Snapshot = {
@@ -390,28 +401,33 @@ test('Cleaning patch, remove DiffAdd on already exists elements', () => {
 		relations: []
 	};
 
-	expect(() => cleanApplyPartialDiff(patch, snapshot)).toThrowError(
+	expect(() => cleanApplyPartialDiff(partialDiff, snapshot)).toThrowError(
 		"Invalid payload. All elements are already created. Nothing to do."
 	);
 });
 
-test('Cleaning patch, convert DiffAdd on already exists elements into DiffEdit', () => {
-	const patch: SnapshotDiff = {
-		collections: [{
-			collection: "test",
-			diff: [
-				{
-					kind: "N",
-					rhs: {
-						collection: "test",
-						meta: {
-							color: '#6644FF'
-						},
-						schema: null
+test('Cleaning partialDiff, convert DiffAdd on already exists elements into DiffEdit', () => {
+	const partialDiff: SnapshotDiffWithHash = {
+		hash: 'abc',
+		diff: {
+			collections: [{
+				collection: "test",
+				diff: [
+					{
+						kind: "N",
+						rhs: {
+							collection: "test",
+							meta: {
+								color: '#6644FF'
+							},
+							schema: null
+						}
 					}
-				}
-			]
-		}], fields: [], relations: []
+				]
+			}],
+			fields: [],
+			relations: []
+		}
 	};
 
 	const snapshot: Snapshot = {
@@ -428,40 +444,48 @@ test('Cleaning patch, convert DiffAdd on already exists elements into DiffEdit',
 		relations: []
 	};
 
-	expect(cleanApplyPartialDiff(patch, snapshot)).toEqual<SnapshotDiff>({
-		collections: [{
-			collection: "test",
-			diff: [
-				{
-					kind: "E",
-					lhs: null,
-					path: ['meta'],
-					rhs: {color: "#6644FF"}
-				}
-			]
-		}],
-		fields: [],
-		relations: []
+	expect(cleanApplyPartialDiff(partialDiff, snapshot)).toEqual<SnapshotDiffWithHash>({
+		hash: 'abc',
+		diff: {
+			collections: [{
+				collection: "test",
+				diff: [
+					{
+						kind: "E",
+						lhs: null,
+						path: ['meta'],
+						rhs: {color: "#6644FF"}
+					}
+				]
+			}],
+			fields: [],
+			relations: []
+		}
 	});
 });
 
-test('Cleaning patch, remove DiffEdit on non existing elements', () => {
-	const patch: SnapshotDiff = {
-		collections: [{
-			collection: "test",
-			diff: [
-				{
-					kind: "E",
-					rhs: {
-						collection: "test",
-						meta: {
-							color: '#6644FF'
-						},
-						schema: null
+test('Cleaning partialDiff, remove DiffEdit on non existing elements', () => {
+	const partialDiff: SnapshotDiffWithHash = {
+		hash: 'abc',
+		diff: {
+			collections: [{
+				collection: "test",
+				diff: [
+					{
+						kind: "E",
+						rhs: {
+							collection: "test",
+							meta: {
+								color: '#6644FF'
+							},
+							schema: null
+						}
 					}
-				}
-			]
-		}], fields: [], relations: []
+				]
+			}],
+			fields: [],
+			relations: []
+		}
 	};
 
 	const snapshot: Snapshot = {
@@ -472,5 +496,5 @@ test('Cleaning patch, remove DiffEdit on non existing elements', () => {
 		relations: []
 	};
 
-	expect(() => cleanApplyPartialDiff(patch, snapshot)).toThrowError("Invalid payload. All elements are already created. Nothing to do.");
+	expect(() => cleanApplyPartialDiff(partialDiff, snapshot)).toThrowError("Invalid payload. All elements are already created. Nothing to do.");
 });
